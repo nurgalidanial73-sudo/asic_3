@@ -2,118 +2,85 @@ import os
 import csv
 import json
 
+print("Checking file...")
 
-class FileTool:
-    def __init__(self, path):
-        self.path = path
+if not os.path.exists("students.csv"):
+    print("Error: students.csv not found. Please download the file from LMS.")
+    exit()
 
-    def exists(self):
-        if os.path.exists(self.path):
-            print(f"Found: {self.path}")
-            return True
-        print(f"Missing file: {self.path}")
-        return False
+print("File found: students.csv")
 
-    def make_dir(self, folder="output"):
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-            print(f"Created folder: {folder}")
-        else:
-            print(f"Folder exists: {folder}")
+print("Checking output folder...")
 
+if not os.path.exists("output"):
+    os.makedirs("output")
+    print("Output folder created: output/")
+else:
+    print("Output folder exists")
 
-class Loader:
-    def __init__(self, path):
-        self.path = path
+students = []
 
-    def read(self):
-        try:
-            with open(self.path, encoding="utf-8") as f:
-                data = list(csv.DictReader(f))
-            print(f"Loaded: {len(data)} rows")
-            return data
-        except Exception as e:
-            print(f"Load error: {e}")
-            return []
+with open("students.csv", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        students.append(row)
 
-    def show(self, data, n=5):
-        print("-" * 30)
-        for row in data[:n]:
-            print(row)
-        print("-" * 30)
+print("\nTotal students:", len(students))
 
+print("\nFirst 5 rows:")
+print("------------------------------")
 
-class Analyzer:
-    def __init__(self, data):
-        self.data = data
+for i in range(5):
+    s = students[i]
+    print(f"{s['student_id']} | {s['age']} | {s['gender']} | {s['country']} | GPA: {s['GPA']}")
 
-    def top_students(self):
-        clean = []
+print("------------------------------")
 
-        for x in self.data:
-            try:
-                x["final_exam_score"] = float(x["final_exam_score"])
-                x["GPA"] = float(x["GPA"])
-                clean.append(x)
-            except:
-                continue
+top10 = sorted(
+    students,
+    key=lambda x: float(x["final_exam_score"]),
+    reverse=True
+)[:10]
 
-        best = sorted(clean, key=lambda x: x["final_exam_score"], reverse=True)[:10]
+print("\n------------------------------")
+print("Top 10 Students by Exam Score")
+print("------------------------------")
 
-        result = []
-        for i, x in enumerate(best, 1):
-            result.append({
-                "rank": i,
-                "id": x["student_id"],
-                "score": x["final_exam_score"],
-                "GPA": x["GPA"]
-            })
+for i in range(len(top10)):
+    s = top10[i]
+    print(
+        f"{i+1}. {s['student_id']} | {s['country']} | {s['major']} | "
+        f"Score: {s['final_exam_score']} | GPA: {s['GPA']}"
+    )
 
-        return {
-            "total": len(self.data),
-            "top": result
-        }
+print("------------------------------")
 
-    def extra(self):
-        try:
-            high = list(filter(lambda x: float(x["final_exam_score"]) > 95, self.data))
-            gpas = list(map(lambda x: float(x["GPA"]), self.data))
-            print(f">95 score: {len(high)}")
-            print(f"GPA sample: {gpas[:5]}")
-        except:
-            print("Data error")
+result = {
+    "analysis": "Top 10 Students by Exam Score",
+    "total_students": len(students),
+    "top_10": []
+}
 
+for i in range(len(top10)):
+    s = top10[i]
+    result["top_10"].append({
+        "rank": i + 1,
+        "student_id": s["student_id"],
+        "country": s["country"],
+        "major": s["major"],
+        "final_exam_score": float(s["final_exam_score"]),
+        "GPA": float(s["GPA"])
+    })
 
-def save(data, path):
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-        print(f"Saved: {path}")
-    except Exception as e:
-        print(f"Save error: {e}")
+with open("output/result.json", "w", encoding="utf-8") as f:
+    json.dump(result, f, indent=4)
 
+print("\n==============================")
+print("ANALYSIS RESULT")
+print("==============================")
+print("Analysis : Top 10 Students by Exam Score")
+print("Total students :", len(students))
+print("Top 10 saved to output/result.json")
+print("==============================")
 
-def run():
-    file_path = "students.csv"
-    out_path = "output/result.json"
-
-    tool = FileTool(file_path)
-
-    if not tool.exists():
-        return
-
-    tool.make_dir()
-
-    loader = Loader(file_path)
-    students = loader.read()
-    loader.show(students)
-
-    analyzer = Analyzer(students)
-    res = analyzer.top_students()
-    print(res)
-
-    analyzer.extra()
-    save(res, out_path)
-
-
-run()
+print("\nResult saved to output/result.json")
